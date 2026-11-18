@@ -22,9 +22,9 @@ jobs:
 
       - name: Download Catch2
         run: |
-          mkdir -p catch2/include/catch2
+          mkdir -p catch2/include
           curl -L https://github.com/catchorg/Catch2/releases/download/v3.16.1/catch_amalgamated.hpp \
-            -o catch2/include/catch2/catch_all.hpp
+            -o catch2/include/catch_all.hpp
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Debug
