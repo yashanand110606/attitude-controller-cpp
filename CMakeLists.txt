@@ -11,12 +11,13 @@ add_executable(attitude_controller
 )
 target_link_libraries(attitude_controller Eigen3::Eigen)
 
-# Add test executable - include tests in single source file
+# Add test executable
 add_executable(test_controller
     tests/test_controller.cpp
 )
 target_include_directories(test_controller PRIVATE
     ${EIGEN3_INCLUDE_DIRS}
+    ${CMAKE_SOURCE_DIR}/catch2/include
 )
 target_link_libraries(test_controller Eigen3::Eigen)
 

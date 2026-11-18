@@ -22,11 +22,12 @@ jobs:
 
       - name: Download Catch2 header
         run: |
-          mkdir -p catch2
-          curl -L https://raw.githubusercontent.com/catchorg/Catch2/v3.4.0/single_include/catch2/catch_all.hpp -o catch2/catch_all.hpp
+          mkdir -p catch2/include
+          curl -L https://raw.githubusercontent.com/catchorg/Catch2/v3.4.0/single_include/catch2/catch_all.hpp \
+            -o catch2/include/catch_all.hpp
 
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCATCH2_DIR=${{ github.workspace }}/catch2
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=${{ github.workspace }}/catch2
 
       - name: Build
         run: cmake --build build
