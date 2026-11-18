@@ -50,9 +50,7 @@ struct Quaternion {
      * @brief Create identity quaternion
      * @return Identity quaternion
      */
-    static Quaternion identity() {
-        return Quaternion(1.0, 0.0, 0.0, 0.0);
-    }
+    static Quaternion identity() { return Quaternion(1.0, 0.0, 0.0, 0.0); }
 
     /**
      * @brief Create quaternion from Euler angles (ZYX convention)
@@ -106,9 +104,7 @@ struct Quaternion {
      * @brief Get the norm squared of the quaternion
      * @return Norm squared
      */
-    double norm_sq() const {
-        return w * w + x * x + y * y + z * z;
-    }
+    double norm_sq() const { return w * w + x * x + y * y + z * z; }
 
     /**
      * @brief Convert quaternion to Euler angles (roll, pitch, yaw)
@@ -212,20 +208,17 @@ public:
         Quaternion q_gyro = q_.integrate_gyro(wx, wy, wz, dt_);
 
         // 2. Compute roll/pitch from accelerometer
-        double roll_accel = std::atan2(ay,
-                                       std::sqrt(az * az + 1e-10));
-        double pitch_accel = std::atan2(-ax,
-                                        std::sqrt(ay * ay + az * az + 1e-10));
+        double roll_accel =
+            std::atan2(ay, std::sqrt(az * az + 1e-10));
+        double pitch_accel =
+            std::atan2(-ax, std::sqrt(ay * ay + az * az + 1e-10));
 
         // 3. Reference quaternion from accelerometer (identity when level)
-        Quaternion q_accel(std::cos(roll_accel / 2.0) * std::cos(
-                               pitch_accel / 2.0),
-                           std::sin(roll_accel / 2.0) * std::cos(
-                               pitch_accel / 2.0),
-                           std::cos(roll_accel / 2.0) * std::sin(
-                               pitch_accel / 2.0),
-                           std::sin(roll_accel / 2.0) * std::sin(
-                               pitch_accel / 2.0));
+        Quaternion q_accel(
+            std::cos(roll_accel / 2.0) * std::cos(pitch_accel / 2.0),
+            std::sin(roll_accel / 2.0) * std::cos(pitch_accel / 2.0),
+            std::cos(roll_accel / 2.0) * std::sin(pitch_accel / 2.0),
+            std::sin(roll_accel / 2.0) * std::sin(pitch_accel / 2.0));
         q_accel.normalize();
 
         // 4. Blend Euler angles
@@ -248,24 +241,18 @@ public:
      * @brief Get the current attitude estimate
      * @return Current quaternion
      */
-    Quaternion get_attitude() const {
-        return q_;
-    }
+    Quaternion get_attitude() const { return q_; }
 
     /**
      * @brief Get current attitude as Euler angles
      * @return Euler angles (roll, pitch, yaw) in radians
      */
-    std::vector<double> get_euler() const {
-        return q_.to_euler();
-    }
+    std::vector<double> get_euler() const { return q_.to_euler(); }
 
     /**
      * @brief Reset the filter state
      */
-    void reset() {
-        q_ = Quaternion::identity();
-    }
+    void reset() { q_ = Quaternion::identity(); }
 
     /**
      * @brief Set the filter constant alpha
@@ -286,9 +273,9 @@ public:
     }
 
 private:
-    double alpha_;      ///< Filter constant [0,1], default 0.98
-    double dt_;         ///< Time step in seconds, default 0.1s (10Hz)
-    Quaternion q_;      ///< Current attitude estimate
+    double alpha_;    ///< Filter constant [0,1], default 0.98
+    double dt_;       ///< Time step in seconds, default 0.1s (10Hz)
+    Quaternion q_;    ///< Current attitude estimate
 };
 
 /**
@@ -298,17 +285,18 @@ private:
  * @return Exit code
  */
 int main(int argc, char* argv[]) {
-    int num_iterations = 100;    // Default: 100 iterations (10 seconds at
-                                 // 10Hz)
+    int num_iterations = 100;  // Default: 100 iterations (10 seconds at 10Hz)
     bool verbose = false;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--help") {
             std::cout << "Usage: attitude_controller [--iterations N] "
-                      << "[--verbose]" << std::endl;
+                         "[--verbose]"
+                      << std::endl;
             std::cout << "  --iterations N: Number of control loop iterations "
-                      << "(default: 100)" << std::endl;
+                         "(default: 100)"
+                      << std::endl;
             std::cout << "  --verbose: Print detailed output per iteration"
                       << std::endl;
             return 0;
@@ -327,19 +315,20 @@ int main(int argc, char* argv[]) {
     double iteration_time_total = 0.0;
 
     std::cerr << "Running complementary filter control loop..." << std::endl;
-    std::cerr << "Iterations: " << num_iterations
-              << ", DT: 0.1s (10Hz)" << std::endl;
+    std::cerr << "Iterations: " << num_iterations << ", DT: 0.1s (10Hz)"
+              << std::endl;
 
     for (int i = 0; i < num_iterations; ++i) {
         auto iter_start = std::chrono::high_resolution_clock::now();
 
         // Generate IMU data for orbit scenario
-        auto [gyro, accel] = imu_sim.generate_orbit_data(iteration_time_total);
+        auto [gyro, accel] =
+            imu_sim.generate_orbit_data(iteration_time_total);
 
         // Update complementary filter
         ComplementaryFilter filter(0.98, 0.1);
-        q = filter.update(gyro.wx, gyro.wy, gyro.wz,
-                          accel.ax, accel.ay, accel.az);
+        q = filter.update(gyro.wx, gyro.wy, gyro.wz, accel.ax, accel.ay,
+                          accel.az);
 
         auto iter_end = std::chrono::high_resolution_clock::now();
         double iter_dt =
@@ -348,15 +337,12 @@ int main(int argc, char* argv[]) {
 
         if (verbose) {
             auto euler = q.to_euler();
-            std::cout << "Iter " << std::setw(3) << i
-                      << " | wx=" << std::fixed << std::setprecision(4)
-                      << gyro.wx << " wy=" << gyro.wy
-                      << " wz=" << gyro.wz
-                      << " | accel=(" << std::setprecision(2)
-                      << accel.ax << ", " << accel.ay
-                      << ", " << accel.az << ")"
-                      << " | roll=" << euler[0]
-                      << " pitch=" << euler[1]
+            std::cout << "Iter " << std::setw(3) << i << " | wx="
+                      << std::fixed << std::setprecision(4) << gyro.wx
+                      << " wy=" << gyro.wy << " wz=" << gyro.wz
+                      << " | accel=(" << std::setprecision(2) << accel.ax
+                      << ", " << accel.ay << ", " << accel.az << ")"
+                      << " | roll=" << euler[0] << " pitch=" << euler[1]
                       << " | iter_dt=" << iter_dt << std::endl;
         }
 

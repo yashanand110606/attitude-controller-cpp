@@ -52,7 +52,8 @@ public:
     /**
      * @brief Construct an IMU simulator
      * @param gyro_noise_std Standard deviation of gyro noise (rad/s)
-     * @param accel_noise_std Standard deviation of accelerometer noise (m/s^2)
+     * @param accel_noise_std Standard deviation of accelerometer noise
+     *        (m/s^2)
      * @param bias_instability Gyro bias instability (rad/s)
      * @param dt Time step (s)
      */
@@ -64,9 +65,12 @@ public:
           accel_noise_std_(accel_noise_std),
           bias_instability_(bias_instability),
           dt_(dt),
-          rng_(std::chrono::steady_clock::now().time_since_epoch().count()) {
-        gyro_dist_ = std::normal_distribution<double>(0.0, gyro_noise_std_);
-        accel_dist_ = std::normal_distribution<double>(0.0, accel_noise_std_);
+          rng_(std::chrono::steady_clock::now().time_since_epoch()
+                   .count()) {
+        gyro_dist_ =
+            std::normal_distribution<double>(0.0, gyro_noise_std_);
+        accel_dist_ =
+            std::normal_distribution<double>(0.0, accel_noise_std_);
     }
 
     /**
@@ -97,7 +101,8 @@ public:
      * @param az_true True specific force z (m/s^2)
      * @return AccelData with noise
      */
-    AccelData generate_accel(double ax_true, double ay_true, double az_true) {
+    AccelData generate_accel(double ax_true, double ay_true,
+                             double az_true) {
         AccelData data;
         data.ax = ax_true + accel_dist_(rng_);
         data.ay = ay_true + accel_dist_(rng_);

@@ -17,6 +17,3 @@ SpaceAfterTemplateKeyword: false
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeRangeBasedForLoopColon: false
 SpaceInEmptyBlock: false
-SpaceBeforeCpp11BracedList: true
-SpaceAfterCStyleCast: false
-SpaceBeforeSquareBrackets: false

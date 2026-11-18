@@ -7,9 +7,9 @@
 #include <cmath>
 #include <chrono>
 #include "../src/attitude.cpp"
-
-// Test IMU sources (include directly since we link sources)
 #include "../src/imu_sim.cpp"
+
+// ===== IMU Simulation Tests =====
 
 /**
  * @test IMU_Simulation_GaussianNoiseStats
@@ -86,6 +86,8 @@ TEST(IMU_Simulation, GaussianNoiseStats) {
               << std::endl;
 }
 
+// ===== Complementary Filter Tests =====
+
 /**
  * @test ComplementaryFilter_ConvergesToAccelReading
  * @brief Run filter with constant accel reading,
@@ -159,6 +161,8 @@ TEST(ComplementaryFilter, RejectsGyroBias) {
         << "Roll should be less than 1 radian after 10s with bias, got "
         << euler[0];
 }
+
+// ===== Controller Stability Tests =====
 
 /**
  * @test Controller_StabilizesToIdentity
