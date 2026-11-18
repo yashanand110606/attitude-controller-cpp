@@ -22,4 +22,3 @@ SpaceBeforeCpp11BracedList: true
 SpaceAfterCStyleCast: false
 SpaceBeforeSquareBrackets: false
 SpaceBeforeTemplateArgs: false
-Standard: Cpp17

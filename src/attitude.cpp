@@ -3,10 +3,7 @@
  * @brief Complementary filter for attitude estimation using IMU data
  *
  * Implements a complementary filter that fuses gyroscope and accelerometer
- * data to estimate vehicle attitude. The filter uses a weighted average
- * where:
- *   - Gyro provides high-frequency response but drifts over time
- *   - Accelerometer provides low-frequency reference but is noisy
+ * data to estimate vehicle attitude.
  *
  * The filter constant alpha = 0.98 gives 98% gyro / 2% accelerometer
  * weighting.
@@ -14,7 +11,6 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
-#include <complex>
 #include <algorithm>
 #include <chrono>
 #include <thread>
@@ -22,15 +18,18 @@
 #include <string>
 #include <cassert>
 
+// Include IMU simulation definitions (shared between src and tests)
+#include "imu_sim.cpp"
+
 /**
  * @struct Quaternion
  * @brief Represents a unit quaternion for attitude representation
  */
 struct Quaternion {
-    double w; ///< Scalar part
-    double x; ///< Vector part x
-    double y; ///< Vector part y
-    double z; ///< Vector part z
+    double w;   ///< Scalar part
+    double x;   ///< Vector part x
+    double y;   ///< Vector part y
+    double z;   ///< Vector part z
 
     /**
      * @brief Default constructor (identity quaternion)
@@ -46,6 +45,36 @@ struct Quaternion {
      */
     Quaternion(double w, double x, double y, double z)
         : w(w), x(x), y(y), z(z) {}
+
+    /**
+     * @brief Create identity quaternion
+     * @return Identity quaternion
+     */
+    static Quaternion identity() {
+        return Quaternion(1.0, 0.0, 0.0, 0.0);
+    }
+
+    /**
+     * @brief Create quaternion from Euler angles (ZYX convention)
+     * @param roll Roll angle about x-axis (rad)
+     * @param pitch Pitch angle about y-axis (rad)
+     * @param yaw Yaw angle about z-axis (rad)
+     * @return Quaternion
+     */
+    static Quaternion from_euler(double roll, double pitch, double yaw) {
+        double cr = std::cos(roll / 2.0);
+        double sr = std::sin(roll / 2.0);
+        double cp = std::cos(pitch / 2.0);
+        double sp = std::sin(pitch / 2.0);
+        double cy = std::cos(yaw / 2.0);
+        double sy = std::sin(yaw / 2.0);
+
+        double q_w = cy * cp * cr + sy * sp * sr;
+        double q_x = cy * cp * sr - sy * sp * cr;
+        double q_y = sy * cp * sr + cy * sp * cr;
+        double q_z = sy * cp * cr - cy * sp * sr;
+        return Quaternion(q_w, q_x, q_y, q_z);
+    }
 
     /**
      * @brief Normalize the quaternion to unit length
@@ -130,19 +159,11 @@ struct Quaternion {
      */
     Quaternion integrate_gyro(double wx, double wy, double wz,
                               double dt) const {
-        // Quaternion derivative: q_dot = 0.5 * omega_q * q
-        // where omega_q = (0, wx, wy, wz)
         double half_dt = 0.5 * dt;
-
-        // omega * q product (pure quaternion part)
         double q_x = x;
         double q_y = y;
         double q_z = z;
 
-        // dq = 0.5 * dt * (0 * w - wx * q_x - wy * q_y - wz * q_z,
-        //                  0 * q_x + wx * w + wy * q_z - wz * q_y,
-        //                  0 * q_y - wx * q_z + wy * w + wz * q_x,
-        //                  0 * q_z + wx * q_y - wy * q_x + wz * w)
         double d_w = -half_dt * (wx * q_x + wy * q_y + wz * q_z);
         double d_x = half_dt * (wx * w + wy * q_z - wz * q_y);
         double d_y = half_dt * (-wx * q_z + wy * w + wz * q_x);
@@ -156,39 +177,6 @@ struct Quaternion {
 };
 
 /**
- * @struct AccelReading
- * @brief Accelerometer reading with gravity reference
- */
-struct AccelReading {
-    double ax; ///< Specific force x (m/s^2)
-    double ay; ///< Specific force y (m/s^2)
-    double az; ///< Specific force z (m/s^2)
-    double roll_from_accel; ///< Roll angle from accelerometer (rad)
-    double pitch_from_accel; ///< Pitch angle from accelerometer (rad)
-};
-
-/**
- * @brief Compute roll and pitch from accelerometer data
- * @param accel Accelerometer reading (m/s^2)
- * @param g Gravitational acceleration (m/s^2), default 9.81
- * @return Roll and pitch angles from accelerometer
- */
-AccelReading compute_accel_angles(const AccelReading& accel, double g = 9.81) {
-    AccelReading result = accel;
-
-    // Roll: atan2(accel_y, accel_z) — rotation about x-axis
-    result.roll_from_accel = std::atan2(accel.ay,
-        std::sqrt(accel.az * accel.az + 1e-10));
-
-    // Pitch: atan2(-accel_x, sqrt(accel_y^2 + accel_z^2)) — rotation about
-    // y-axis
-    result.pitch_from_accel = std::atan2(-accel.ax,
-        std::sqrt(accel.ay * accel.ay + accel.az * accel.az + 1e-10));
-
-    return result;
-}
-
-/**
  * @class ComplementaryFilter
  * @brief Complementary filter for attitude estimation
  *
@@ -199,8 +187,7 @@ class ComplementaryFilter {
 public:
     /**
      * @brief Construct a complementary filter
-     * @param alpha Filter constant [0, 1]; alpha = 0.98 means 98% gyro,
-     *              2% accel
+     * @param alpha Filter constant [0, 1]; alpha = 0.98 means 98% gyro, 2%
      * @param dt Time step (s), default 0.1s (10Hz)
      */
     ComplementaryFilter(double alpha = 0.98, double dt = 0.1)
@@ -225,55 +212,35 @@ public:
         Quaternion q_gyro = q_.integrate_gyro(wx, wy, wz, dt_);
 
         // 2. Compute roll/pitch from accelerometer
-        AccelReading accel_readings;
-        accel_readings.ax = ax;
-        accel_readings.ay = ay;
-        accel_readings.az = az;
-        compute_accel_angles(accel_readings);
+        double roll_accel = std::atan2(ay,
+                                       std::sqrt(az * az + 1e-10));
+        double pitch_accel = std::atan2(-ax,
+                                        std::sqrt(ay * ay + az * az + 1e-10));
 
-        // 3. Create reference quaternion from accelerometer
-        // For roll: rotation about x-axis, pitch: rotation about y-axis
-        // We use a simple approach: convert accel angles to a rotation
-        // quaternion
-        double roll_accel = accel_readings.roll_from_accel;
-        double pitch_accel = accel_readings.pitch_from_accel;
+        // 3. Reference quaternion from accelerometer (identity when level)
+        Quaternion q_accel(std::cos(roll_accel / 2.0) * std::cos(
+                               pitch_accel / 2.0),
+                           std::sin(roll_accel / 2.0) * std::cos(
+                               pitch_accel / 2.0),
+                           std::cos(roll_accel / 2.0) * std::sin(
+                               pitch_accel / 2.0),
+                           std::sin(roll_accel / 2.0) * std::sin(
+                               pitch_accel / 2.0));
+        q_accel.normalize();
 
-        // Reference quaternion from accelerometer (identity when level)
-        Quaternion q_accel;
-        q_accel = Quaternion(
-            std::cos(roll_accel / 2.0) * std::cos(pitch_accel / 2.0),
-            std::sin(roll_accel / 2.0) * std::cos(pitch_accel / 2.0),
-            std::cos(roll_accel / 2.0) * std::sin(pitch_accel / 2.0),
-            std::sin(roll_accel / 2.0) * std::sin(pitch_accel / 2.0))
-            .normalize();
-
-        // 4. Complementary filter: blend gyro and accelerometer
-        // q_new = alpha * q_gyro + (1 - alpha) * q_accel (as quaternion
-        // blend)
-        // We use spherical linear interpolation concept:
-        // q_combined = normalize(alpha * q_gyro_vector + (1-alpha) *
-        // q_accel_vector)
-        // But quaternions don't add linearly. Instead, we use:
-        // q_new = q_gyro * (q_accel * q_gyro.inverse())^((1-alpha)) blended
-
-        // Simpler approach: weighted average of the rotation vectors
-        // Extract Euler angles from both, blend, then convert back
-
+        // 4. Blend Euler angles
         auto euler_gyro = q_gyro.to_euler();
         auto euler_accel = q_accel.to_euler();
 
-        // Blend Euler angles
         double roll_blended =
             alpha_ * euler_gyro[0] + (1.0 - alpha_) * euler_accel[0];
         double pitch_blended =
             alpha_ * euler_gyro[1] + (1.0 - alpha_) * euler_accel[1];
-        double yaw_blended = alpha_ * euler_gyro[2]; // Keep yaw from gyro
-                                                     // only
+        double yaw_blended = alpha_ * euler_gyro[2];
 
         // Convert blended Euler angles back to quaternion
         q_ = Quaternion::from_euler(roll_blended, pitch_blended,
                                     yaw_blended);
-
         return q_;
     }
 
@@ -319,64 +286,10 @@ public:
     }
 
 private:
-    /** Filter constant: [0,1], default 0.98 */
-    double alpha_;
-
-    /** Time step in seconds, default 0.1s (10Hz) */
-    double dt_;
-
-    /** Current attitude estimate */
-    Quaternion q_;
-
-    /**
-     * @brief Create quaternion from Euler angles (ZYX convention: yaw *
-     * pitch * roll)
-     * @param roll Roll angle about x-axis (rad)
-     * @param pitch Pitch angle about y-axis (rad)
-     * @param yaw Yaw angle about z-axis (rad)
-     * @return Quaternion
-     */
-    static Quaternion from_euler(double roll, double pitch, double yaw) {
-        // Individual axis rotations (intrinsic Tait-Bryan, ZYX)
-        // R_x(roll) = [1, 0, 0; 0, cr, -sr; 0, sr, cr]
-        // R_y(pitch) = [cp, 0, sp; 0, 1, 0; -sp, 0, cp]
-        // R_z(yaw) = [cy, -sy, 0; sy, cy, 0; 0, 0, 1]
-
-        double cr = std::cos(roll / 2.0);
-        double sr = std::sin(roll / 2.0);
-        double cp = std::cos(pitch / 2.0);
-        double sp = std::sin(pitch / 2.0);
-        double cy = std::cos(yaw / 2.0);
-        double sy = std::sin(yaw / 2.0);
-
-        // Combined: R = R_z(yaw) * R_y(pitch) * R_x(roll)
-        // As quaternion: q = [w, x, y, z]
-        double w = cy * cp * cr + sy * sp * sr;
-        double x = cy * cp * sr - sy * sp * cr;
-        double y = sy * cp * sr + cy * sp * cr;
-        double z = sy * cp * cr - cy * sp * sr;
-
-        return Quaternion(w, x, y, z);
-    }
+    double alpha_;      ///< Filter constant [0,1], default 0.98
+    double dt_;         ///< Time step in seconds, default 0.1s (10Hz)
+    Quaternion q_;      ///< Current attitude estimate
 };
-
-/**
- * @brief Run a single control loop iteration at 10Hz
- * @param q Current attitude estimate
- * @param wx Gyro x (rad/s)
- * @param wy Gyro y (rad/s)
- * @param wz Gyro z (rad/s)
- * @param ax Accel x (m/s^2)
- * @param ay Accel y (m/s^2)
- * @param az Accel z (m/s^2)
- * @return Updated attitude estimate
- */
-Quaternion control_loop_iteration(Quaternion q, double wx, double wy,
-                                  double wz, double ax, double ay,
-                                  double az) {
-    // complementary filter update
-    return ComplementaryFilter(0.98, 0.1).update(wx, wy, wz, ax, ay, az);
-}
 
 /**
  * @brief Main function: run complementary filter control loop
@@ -385,38 +298,24 @@ Quaternion control_loop_iteration(Quaternion q, double wx, double wy,
  * @return Exit code
  */
 int main(int argc, char* argv[]) {
-    // Parse command line arguments
-    int num_iterations = 100;   // Default: 100 iterations (10 seconds at
-                                // 10Hz)
-    double gyro_noise = 0.01;   // Default: 0.01 rad/s
-    double accel_noise = 0.01;  // Default: 0.01 m/s^2
-    double g = 9.81;            // Gravitational acceleration
+    int num_iterations = 100;    // Default: 100 iterations (10 seconds at
+                                 // 10Hz)
     bool verbose = false;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--help") {
             std::cout << "Usage: attitude_controller [--iterations N] "
-                      << "[--gyro-noise STD] [--accel-noise STD]"
+                      << "[--verbose]" << std::endl;
+            std::cout << "  --iterations N: Number of control loop iterations "
+                      << "(default: 100)" << std::endl;
+            std::cout << "  --verbose: Print detailed output per iteration"
                       << std::endl;
-            std::cout << "  --iterations N: Number of control loop "
-                      << "iterations (default: 100)" << std::endl;
-            std::cout << "  --gyro-noise STD: Gyro noise standard "
-                      << "deviation (default: 0.01 rad/s)" << std::endl;
-            std::cout << "  --accel-noise STD: Accelerometer noise "
-                      << "standard deviation (default: 0.01 m/s^2)"
-                      << std::endl;
-            std::cout << "  --verbose: Print detailed output per "
-                      << "iteration" << std::endl;
             return 0;
         } else if (arg == "--verbose") {
             verbose = true;
         } else if (arg == "--iterations" && i + 1 < argc) {
             num_iterations = std::stoi(argv[++i]);
-        } else if (arg == "--gyro-noise" && i + 1 < argc) {
-            gyro_noise = std::stod(argv[++i]);
-        } else if (arg == "--accel-noise" && i + 1 < argc) {
-            accel_noise = std::stod(argv[++i]);
         }
     }
 
@@ -425,23 +324,22 @@ int main(int argc, char* argv[]) {
 
     // Start with identity quaternion (vehicle level)
     Quaternion q;
-    std::chrono::steady_clock::time_point loop_start;
     double iteration_time_total = 0.0;
 
     std::cerr << "Running complementary filter control loop..." << std::endl;
-    std::cerr << "Iterations: " << num_iterations << ", DT: 0.1s (10Hz)"
-              << std::endl;
+    std::cerr << "Iterations: " << num_iterations
+              << ", DT: 0.1s (10Hz)" << std::endl;
 
     for (int i = 0; i < num_iterations; ++i) {
         auto iter_start = std::chrono::high_resolution_clock::now();
 
         // Generate IMU data for orbit scenario
-        auto [gyro, accel] = imu_sim.generate_orbit_data(
-            iteration_time_total);
+        auto [gyro, accel] = imu_sim.generate_orbit_data(iteration_time_total);
 
         // Update complementary filter
-        q = q.update(gyro.wx, gyro.wy, gyro.wz,
-                     accel.ax, accel.ay, accel.az);
+        ComplementaryFilter filter(0.98, 0.1);
+        q = filter.update(gyro.wx, gyro.wy, gyro.wz,
+                          accel.ax, accel.ay, accel.az);
 
         auto iter_end = std::chrono::high_resolution_clock::now();
         double iter_dt =
@@ -452,11 +350,11 @@ int main(int argc, char* argv[]) {
             auto euler = q.to_euler();
             std::cout << "Iter " << std::setw(3) << i
                       << " | wx=" << std::fixed << std::setprecision(4)
-                      << gyro.wx
-                      << " wy=" << gyro.wy
+                      << gyro.wx << " wy=" << gyro.wy
                       << " wz=" << gyro.wz
-                      << " | accel=(" << std::setprecision(2) << accel.ax
-                      << ", " << accel.ay << ", " << accel.az << ")"
+                      << " | accel=(" << std::setprecision(2)
+                      << accel.ax << ", " << accel.ay
+                      << ", " << accel.az << ")"
                       << " | roll=" << euler[0]
                       << " pitch=" << euler[1]
                       << " | iter_dt=" << iter_dt << std::endl;
@@ -481,10 +379,9 @@ int main(int argc, char* argv[]) {
               << euler_final[1] * 180.0 / M_PI << " deg)" << std::endl;
     std::cerr << "Average iteration time: " << avg_iter_time * 1000.0
               << " ms" << std::endl;
-    std::cerr << "Effective loop frequency: " << freq << " Hz"
-              << std::endl;
+    std::cerr << "Effective loop frequency: " << freq << " Hz" << std::endl;
     std::cerr << "Quaternion norm: " << q.norm_sq()
-              << " (should be approximately 1.0)" << std::endl;
+              << " (should be approx 1.0)" << std::endl;
 
     return 0;
 }
