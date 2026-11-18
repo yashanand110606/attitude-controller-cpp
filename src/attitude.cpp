@@ -9,7 +9,6 @@
 #include <iomanip>
 #include <cassert>
 
-// Main executable for running the attitude simulation loop
 int main(int argc, char* argv[]) {
     int num_iterations = 100;
     bool verbose = false;
@@ -17,10 +16,10 @@ int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--help") {
-            std::cout << "Usage: attitude_controller [--iterations N] [--verbose]"
-                      << std::endl;
-            std::cout << "  --iterations N: Number of iterations (default: 100)"
-                      << std::endl;
+            std::cout << "Usage: attitude_controller "
+                      << "[--iterations N] [--verbose]" << std::endl;
+            std::cout << "  --iterations N: Number of iterations "
+                      << "(default: 100)" << std::endl;
             std::cout << "  --verbose: Print detailed output per iteration"
                       << std::endl;
             return 0;
@@ -35,7 +34,8 @@ int main(int argc, char* argv[]) {
     Quaternion q;
     double total_time = 0.0;
 
-    std::cerr << "Running complementary filter control loop..." << std::endl;
+    std::cerr << "Running complementary filter control loop..."
+              << std::endl;
     std::cerr << "Iterations: " << num_iterations
               << ", DT: 0.1s (10Hz)" << std::endl;
 

@@ -5,28 +5,28 @@
 #ifndef IMU_SIM_H
 #define IMU_SIM_H
 
+#include <chrono>
 #include <cmath>
 #include <random>
-#include <chrono>
-#include <vector>
 #include <utility>
+#include <vector>
 
 struct GyroData {
-    double wx;        ///< Angular velocity x (rad/s)
-    double wy;        ///< Angular velocity y (rad/s)
-    double wz;        ///< Angular velocity z (rad/s)
-    double bias_x;    ///< Gyro bias x (rad/s)
-    double bias_y;    ///< Gyro bias y (rad/s)
-    double bias_z;    ///< Gyro bias z (rad/s)
+    double wx;
+    double wy;
+    double wz;
+    double bias_x;
+    double bias_y;
+    double bias_z;
 };
 
 struct AccelData {
-    double ax;         ///< Specific force x (m/s^2)
-    double ay;         ///< Specific force y (m/s^2)
-    double az;         ///< Specific force z (m/s^2)
-    double noise_x;    ///< Accelerometer noise x (m/s^2)
-    double noise_y;    ///< Accelerometer noise y (m/s^2)
-    double noise_z;    ///< Accelerometer noise z (m/s^2)
+    double ax;
+    double ay;
+    double az;
+    double noise_x;
+    double noise_y;
+    double noise_z;
 };
 
 class IMUSimulator {
@@ -60,12 +60,9 @@ public:
      */
     GyroData generate_gyro(double wx_true, double wy_true, double wz_true) {
         GyroData data;
-        data.wx = wx_true + gyro_dist_(rng_) +
-                  bias_instability_ * (gen_real() - 0.5);
-        data.wy = wy_true + gyro_dist_(rng_) +
-                  bias_instability_ * (gen_real() - 0.5);
-        data.wz = wz_true + gyro_dist_(rng_) +
-                  bias_instability_ * (gen_real() - 0.5);
+        data.wx = wx_true + gyro_dist_(rng_) + bias_instability_ * (gen_real() - 0.5);
+        data.wy = wy_true + gyro_dist_(rng_) + bias_instability_ * (gen_real() - 0.5);
+        data.wz = wz_true + gyro_dist_(rng_) + bias_instability_ * (gen_real() - 0.5);
         data.bias_x = bias_instability_;
         data.bias_y = bias_instability_;
         data.bias_z = bias_instability_;
