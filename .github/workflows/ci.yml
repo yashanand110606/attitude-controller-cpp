@@ -18,10 +18,15 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential clang clang-tidy cmake catch2-dev libeigen3-dev
+          sudo apt-get install -y build-essential clang clang-tidy cmake libeigen3-dev
+
+      - name: Download Catch2 header
+        run: |
+          mkdir -p catch2
+          curl -L https://raw.githubusercontent.com/catchorg/Catch2/v3.4.0/single_include/catch2/catch_all.hpp -o catch2/catch_all.hpp
 
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCATCH2_DIR=${{ github.workspace }}/catch2
 
       - name: Build
         run: cmake --build build

@@ -8,7 +8,6 @@
  * Physics: Uses publicly available gravitational and rotational models.
  * Noise models: Gaussian distributions with specified standard deviations.
  */
-
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -142,7 +141,7 @@ public:
             std::cerr << "Error: Could not open file " << filename << std::endl;
             return;
         }
-        // Write header: number of fields (6 for gyro + 6 for accel = 12)
+        // Write header: number of fields (12 for gyro + accel = 12 fields)
         uint32_t num_fields = 12;
         file.write(reinterpret_cast<const char*>(&num_fields), sizeof(uint32_t));
         file.close();
