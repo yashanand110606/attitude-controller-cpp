@@ -1,0 +1,17 @@
+# Build artifacts
+build/
+
+# IDE files
+.vscode/
+*.swp
+*.swo
+
+# Distribution
+*.tar.gz
+*.zip
+
+# CMake
+cmake-build-debug/
+
+# Generated
+coverage/
