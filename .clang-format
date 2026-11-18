@@ -1,7 +1,7 @@
 BasedOnStyle: LLVM
 IndentWidth: 4
 ColumnLimit: 80
-AlignAfterOpenBracket: Never
+AlignAfterOpenBracket: Align
 BreakConstructorInitializers: BeforeComma
 PointerAlignment: Left
 ReferenceAlignment: Left

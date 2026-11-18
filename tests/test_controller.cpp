@@ -3,7 +3,7 @@
  * @brief All unit tests for attitude controller
  */
 #define CATCH_CONFIG_MAIN
-#include <catch2/catch_all.hpp>
+#include <catch_all.hpp>
 #include <cmath>
 #include <numeric>
 #include "../src/attitude.h"
